@@ -3,7 +3,9 @@ new Q5();
 const rnd_int = hl.randomInt;
 const rnd_btw = hl.random;
 
-const REDUCED_SIZE = rnd_int(33,100);
+const REDUCED_SIZE = rnd_int(60,100);
+
+console.log('REDUCED_SIZE:', REDUCED_SIZE);
 
 // Palette configuration object
 const PALETTES = {
@@ -18,8 +20,8 @@ const PALETTES = {
     bg: '#F2F2F2'
   },
   Mondrian: {
-    weight: 2,
-    palette: ['#EDC917', '#0B0C0C', '#FD3E4D', '#6886DC'],
+    weight: 2000,
+    palette: ['#EDC917', '#F8F5F5', '#FD3E4D', '#6886DC'],
     bg: '#F8F5F5'
   },
   BW: {
@@ -170,6 +172,71 @@ const GRID_PARAMS = {
   padding: 2             // Padding around the grid (in pixels)
 };
 
+// Pattern drawing functions
+function drawPattern(g, cell, patternType, color) {
+  const padding = 2;
+  const x = cell.x + padding;
+  const y = cell.y + padding;
+  const w = cell.w - padding * 2;
+  const h = cell.h - padding * 2;
+  
+  g.stroke(color);
+  g.fill(color);
+  
+  switch(patternType) {
+    case 'lines':
+      drawLines(g, x, y, w, h);
+      break;
+    case 'dots':
+      drawDots(g, x, y, w, h);
+      break;
+    case 'crosshatch':
+      drawCrosshatch(g, x, y, w, h);
+      break;
+  }
+}
+
+function drawLines(g, x, y, w, h) {
+  const numLines = rnd_int(5, 15);
+  const spacing = h / numLines;
+  
+  for(let i = 0; i < numLines; i++) {
+    const yPos = y + i * spacing;
+    g.line(x, yPos, x + w, yPos);
+  }
+}
+
+function drawDots(g, x, y, w, h) {
+  const gridSize = rnd_int(3, 6);
+  const dotSize = Math.max(2, Math.min(w, h) / (gridSize * 3)); // Ensure minimum dot size of 2
+  const spacingX = w / (gridSize + 1); // Add 1 to gridSize for better spacing
+  const spacingY = h / (gridSize + 1);
+  
+  for(let i = 0; i < gridSize; i++) {
+    for(let j = 0; j < gridSize; j++) {
+      if(rnd_btw(0, 1) > 0.3) {
+        const xPos = x + spacingX * (i + 1); // Start from 1 to avoid edge
+        const yPos = y + spacingY * (j + 1);
+        if (dotSize > 0) { // Safety check
+          g.ellipse(xPos, yPos, dotSize, dotSize);
+        }
+      }
+    }
+  }
+}
+
+function drawCrosshatch(g, x, y, w, h) {
+  const numLines = rnd_int(5, 10);
+  const spacingX = w / numLines;
+  const spacingY = h / numLines;
+  
+  // Draw diagonal lines in both directions
+  for(let i = -numLines; i < numLines * 2; i++) {
+    g.line(x + i * spacingX, y, x + (i + numLines) * spacingX, y + h);
+    g.line(x + i * spacingX, y + h, x + (i + numLines) * spacingX, y);
+  }
+}
+
 function createBasePattern() {
   let g = createGraphics(REDUCED_SIZE, REDUCED_SIZE);
   g.background(BACKGROUND_COLOR);
@@ -235,30 +302,62 @@ function createBasePattern() {
   }
   
   // Color the cells
-  // Draw filled cells
   g.noStroke();
   let usedColors = new Set();
   let backgroundCount = 0;
   let totalCells = cells.length;
+  let coloredCells = 0;
+  const minColoredCells = 2;
   
-  for(let i = 0; i < cells.length; i++) {
+  const patterns = ['lines', 'dots', 'crosshatch'];
+  
+  // First pass: try to get minimum colored cells
+  for(let i = 0; i < cells.length && coloredCells < minColoredCells; i++) {
     let cell = cells[i];
-    let remainingCells = cells.length - i;
+    
+    let color = random(COLOR_PALETTE);
+    g.fill(color);
+    usedColors.add(color);
+    coloredCells++;
+    
+    // Draw the base rectangle
+    g.rect(cell.x, cell.y, cell.w, cell.h);
+    
+    // 50% chance of adding a pattern
+    if(rnd_btw(0, 1) > 0.5) {
+      g.strokeWeight(GRID_PARAMS.lineWeight * 0.5);
+      drawPattern(g, cell, random(patterns), LINE_COLOR);
+    }
+  }
+  
+  // Second pass: random coloring for remaining cells
+  for(let i = minColoredCells; i < cells.length; i++) {
+    let cell = cells[i];
     
     // Force color if too many background cells
-    let forceColor = (backgroundCount / totalCells) > (1 - GRID_PARAMS.colorProb);
+    let forceColor = (backgroundCount / (i + 1)) > (1 - GRID_PARAMS.colorProb);
     // Force background if too many colored cells
-    let forceBackground = (usedColors.size / totalCells) > GRID_PARAMS.colorProb;
+    let forceBackground = ((coloredCells) / (i + 1)) > GRID_PARAMS.colorProb;
     
     if(!forceBackground && (forceColor || random() > (1 - GRID_PARAMS.colorProb))) {
       let color = random(COLOR_PALETTE);
       g.fill(color);
       usedColors.add(color);
+      coloredCells++;
+      
+      // Draw the base rectangle
+      g.rect(cell.x, cell.y, cell.w, cell.h);
+      
+      // 50% chance of adding a pattern
+      if(rnd_btw(0, 1) > 0.5) {
+        g.strokeWeight(GRID_PARAMS.lineWeight * 0.5);
+        drawPattern(g, cell, random(patterns), LINE_COLOR);
+      }
     } else {
       g.fill(BACKGROUND_COLOR);
+      g.rect(cell.x, cell.y, cell.w, cell.h);
       backgroundCount++;
     }
-    g.rect(cell.x, cell.y, cell.w, cell.h);
   }
   
   // Draw grid lines
@@ -271,7 +370,6 @@ function createBasePattern() {
   
   return g;
 }
-
 
 function preload() {
   // Create base pattern instead of loading image
