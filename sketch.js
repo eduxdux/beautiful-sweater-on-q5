@@ -20,7 +20,7 @@ const PALETTES = {
     bg: '#F2F2F2'
   },
   Mondrian: {
-    weight: 2000,
+    weight: 2,
     palette: ['#EDC917', '#F8F5F5', '#FD3E4D', '#6886DC'],
     bg: '#F8F5F5'
   },
@@ -197,8 +197,9 @@ function drawPattern(g, cell, patternType, color) {
 }
 
 function drawLines(g, x, y, w, h) {
-  const numLines = rnd_int(5, 15);
+  const numLines = rnd_int(4, 15); // Reduced number of lines
   const spacing = h / numLines;
+  g.strokeWeight(GRID_PARAMS.lineWeight * 0.3); // Thinner lines
   
   for(let i = 0; i < numLines; i++) {
     const yPos = y + i * spacing;
@@ -207,17 +208,19 @@ function drawLines(g, x, y, w, h) {
 }
 
 function drawDots(g, x, y, w, h) {
-  const gridSize = rnd_int(3, 6);
-  const dotSize = Math.max(2, Math.min(w, h) / (gridSize * 3)); // Ensure minimum dot size of 2
-  const spacingX = w / (gridSize + 1); // Add 1 to gridSize for better spacing
+  const gridSize = rnd_int(3, 8); // Slightly reduced grid size
+  const dotSize = Math.max(1.5, Math.min(w, h) / (gridSize * 4)); // Smaller dots
+  const spacingX = w / (gridSize + 1);
   const spacingY = h / (gridSize + 1);
+  
+  g.strokeWeight(GRID_PARAMS.lineWeight * 0.3); // Thinner outline
   
   for(let i = 0; i < gridSize; i++) {
     for(let j = 0; j < gridSize; j++) {
-      if(rnd_btw(0, 1) > 0.3) {
-        const xPos = x + spacingX * (i + 1); // Start from 1 to avoid edge
+      if(rnd_btw(0, 1) > 0.4) { // Slightly more sparse
+        const xPos = x + spacingX * (i + 1);
         const yPos = y + spacingY * (j + 1);
-        if (dotSize > 0) { // Safety check
+        if (dotSize > 0) {
           g.ellipse(xPos, yPos, dotSize, dotSize);
         }
       }
@@ -226,15 +229,24 @@ function drawDots(g, x, y, w, h) {
 }
 
 function drawCrosshatch(g, x, y, w, h) {
-  const numLines = rnd_int(5, 10);
+  const numLines = rnd_int(4, 7); // Reduced number of lines
   const spacingX = w / numLines;
   const spacingY = h / numLines;
   
-  // Draw diagonal lines in both directions
-  for(let i = -numLines; i < numLines * 2; i++) {
+  g.strokeWeight(GRID_PARAMS.lineWeight * 0.25); // Even thinner lines for crosshatch
+  
+  // Draw diagonal lines in both directions, but less dense
+  for(let i = -numLines; i < numLines * 1.5; i += 2) { // Increased step to make pattern less dense
     g.line(x + i * spacingX, y, x + (i + numLines) * spacingX, y + h);
     g.line(x + i * spacingX, y + h, x + (i + numLines) * spacingX, y);
   }
+}
+
+function adjustColorOpacity(color, opacity) {
+  if (color.startsWith('#')) {
+    return color + Math.floor(opacity * 255).toString(16).padStart(2, '0');
+  }
+  return color;
 }
 
 function createBasePattern() {
@@ -325,8 +337,9 @@ function createBasePattern() {
     
     // 50% chance of adding a pattern
     if(rnd_btw(0, 1) > 0.5) {
-      g.strokeWeight(GRID_PARAMS.lineWeight * 0.5);
-      drawPattern(g, cell, random(patterns), LINE_COLOR);
+      const originalStrokeWeight = g.strokeWeight;
+      drawPattern(g, cell, random(patterns), color === '#ffffff' ? LINE_COLOR : adjustColorOpacity(LINE_COLOR, 0.5));
+      g.strokeWeight(originalStrokeWeight);
     }
   }
   
@@ -350,8 +363,9 @@ function createBasePattern() {
       
       // 50% chance of adding a pattern
       if(rnd_btw(0, 1) > 0.5) {
-        g.strokeWeight(GRID_PARAMS.lineWeight * 0.5);
-        drawPattern(g, cell, random(patterns), LINE_COLOR);
+        const originalStrokeWeight = g.strokeWeight;
+        drawPattern(g, cell, random(patterns), color === '#ffffff' ? LINE_COLOR : adjustColorOpacity(LINE_COLOR, 0.5));
+        g.strokeWeight(originalStrokeWeight);
       }
     } else {
       g.fill(BACKGROUND_COLOR);
