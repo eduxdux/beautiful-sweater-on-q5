@@ -1,11 +1,11 @@
-new Q5();
+//new Q5();
 
 const rnd_int = hl.randomInt;
 const rnd_btw = hl.random;
 
 const REDUCED_SIZE = rnd_int(60,100);
 
-console.log('REDUCED_SIZE:', REDUCED_SIZE);
+//console.log('REDUCED_SIZE:', REDUCED_SIZE);
 
 // Palette configuration object
 const PALETTES = {
@@ -26,7 +26,7 @@ const PALETTES = {
   },
   BW: {
     weight: 1,
-    palette: ['#0B0C0C'],
+    palette: ['#0B0C0C','#000005'],
     bg: '#F8F5F5'
   },
   'Inverse BW': {
@@ -35,7 +35,7 @@ const PALETTES = {
     bg: '#0B0C0C'
   },
   Riso: {
-    weight: 2,
+    weight: 200000,
     palette: ['#1851BB', '#F7AFE1', '#39104A', '#FF3F00', '#F3D701'],
     bg: '#E8E7E3'
   },
@@ -130,6 +130,7 @@ const createWeightedSelector = (palettes) => {
   return () => {
     const selected = weightedArray[Math.floor(rnd_btw(0, 1) * weightedArray.length)];
     return {
+      name: selected.name,
       palette: selected.palette,
       bg: selected.bg
     };
@@ -137,7 +138,7 @@ const createWeightedSelector = (palettes) => {
 };
 
 // Create selector and select palette
-const { palette: COLOR_PALETTE, bg: BACKGROUND_COLOR } = createWeightedSelector(PALETTES)();
+const { name: PALETTE_NAME, palette: COLOR_PALETTE, bg: BACKGROUND_COLOR } = createWeightedSelector(PALETTES)();
 
 let img;
 let buffer;
@@ -156,8 +157,8 @@ let FOLD_ANGLE;
 
 const LINE_COLOR = '#000000';       // Color for grid lines
 
-const nSeed = rnd_int(0,99999999999999999999999999999999999999999999);
-const rSeed = rnd_int(0,99999999999999999999999999999999999999999999);
+const nSeed = rnd_int(0,9999999999999);
+const rSeed = rnd_int(0,9999999999999);
 
 // Grid pattern parameters
 const GRID_PARAMS = {
@@ -278,16 +279,16 @@ function createBasePattern() {
       // Force split if no subdivisions happened yet and we're on last iteration
       let shouldSplit = (i === GRID_PARAMS.divisions - 1 && subdivisionCount === 0) ? 
                        true : 
-                       random() > (1 - GRID_PARAMS.splitProb);
+                       rnd_btw(0, 1) > (1 - GRID_PARAMS.splitProb);
       
       if(shouldSplit && 
          cell.w > GRID_PARAMS.minCellSize && 
          cell.h > GRID_PARAMS.minCellSize) {
         subdivisionCount++;
         // Vertical split
-        if(random() > (1 - GRID_PARAMS.verticalSplitProb) && 
+        if(rnd_btw(0, 1) > (1 - GRID_PARAMS.verticalSplitProb) && 
            cell.w > GRID_PARAMS.minCellSize * 1.5) {
-          let splitX = cell.x + random(
+          let splitX = cell.x + rnd_btw(
             cell.w * GRID_PARAMS.splitRangeMin, 
             cell.w * GRID_PARAMS.splitRangeMax
           );
@@ -296,7 +297,7 @@ function createBasePattern() {
         }
         // Horizontal split
         else if(cell.h > GRID_PARAMS.minCellSize * 1.5) {
-          let splitY = cell.y + random(
+          let splitY = cell.y + rnd_btw(
             cell.h * GRID_PARAMS.splitRangeMin, 
             cell.h * GRID_PARAMS.splitRangeMax
           );
@@ -327,7 +328,7 @@ function createBasePattern() {
   for(let i = 0; i < cells.length && coloredCells < minColoredCells; i++) {
     let cell = cells[i];
     
-    let color = random(COLOR_PALETTE);
+    let color = COLOR_PALETTE[rnd_int(0, COLOR_PALETTE.length - 1)];
     g.fill(color);
     usedColors.add(color);
     coloredCells++;
@@ -338,7 +339,7 @@ function createBasePattern() {
     // 50% chance of adding a pattern
     if(rnd_btw(0, 1) > 0.5) {
       const originalStrokeWeight = g.strokeWeight;
-      drawPattern(g, cell, random(patterns), color === '#ffffff' ? LINE_COLOR : adjustColorOpacity(LINE_COLOR, 0.5));
+      drawPattern(g, cell, patterns[rnd_int(0, patterns.length - 1)], color === '#ffffff' ? LINE_COLOR : adjustColorOpacity(LINE_COLOR, 0.5));
       g.strokeWeight(originalStrokeWeight);
     }
   }
@@ -352,8 +353,8 @@ function createBasePattern() {
     // Force background if too many colored cells
     let forceBackground = ((coloredCells) / (i + 1)) > GRID_PARAMS.colorProb;
     
-    if(!forceBackground && (forceColor || random() > (1 - GRID_PARAMS.colorProb))) {
-      let color = random(COLOR_PALETTE);
+    if(!forceBackground && (forceColor || rnd_btw(0, 1) > (1 - GRID_PARAMS.colorProb))) {
+      let color = COLOR_PALETTE[rnd_int(0, COLOR_PALETTE.length - 1)];
       g.fill(color);
       usedColors.add(color);
       coloredCells++;
@@ -364,7 +365,7 @@ function createBasePattern() {
       // 50% chance of adding a pattern
       if(rnd_btw(0, 1) > 0.5) {
         const originalStrokeWeight = g.strokeWeight;
-        drawPattern(g, cell, random(patterns), color === '#ffffff' ? LINE_COLOR : adjustColorOpacity(LINE_COLOR, 0.5));
+        drawPattern(g, cell, patterns[rnd_int(0, patterns.length - 1)], color === '#ffffff' ? LINE_COLOR : adjustColorOpacity(LINE_COLOR, 0.5));
         g.strokeWeight(originalStrokeWeight);
       }
     } else {
@@ -385,29 +386,36 @@ function createBasePattern() {
   return g;
 }
 
-function preload() {
-  // Create base pattern instead of loading image
-  img = createBasePattern();
-}
+
+let traits = {
+  Palette: PALETTE_NAME,
+};
 
 function setup() {
   createCanvas(1080, 1080);
 
+  
   noiseSeed(nSeed);
   randomSeed(rSeed);
 
+
+  img = createBasePattern();
   pixelDensity(1);
   buffer = createGraphics(width, height);
   buffer.pixelDensity(1);
   
-  FOLD_ANGLE = random(TWO_PI);
-  console.log('Fold angle:', degrees(FOLD_ANGLE));
+  FOLD_ANGLE = rnd_btw(0, TWO_PI);
+  //console.log('Fold angle:', degrees(FOLD_ANGLE));
   
   imgResized = createGraphics(REDUCED_SIZE, REDUCED_SIZE);
   imgResized.pixelDensity(1);
   imgResized.image(img, 0, 0, REDUCED_SIZE, REDUCED_SIZE);
+  //image(img, 0, 0, width, height);
 
   generateSweater();
+
+  hl.token.setTraits(traits);
+  console.log( traits);
   noLoop();
 }
 
@@ -431,9 +439,9 @@ function generateKnitPatternColors() {
       let g = imgResized.pixels[index + 1];
       let b = imgResized.pixels[index + 2];
       
-      r += random(-5, 5);
-      g += random(-5, 5);
-      b += random(-5, 5);
+      r += rnd_btw(-5, 5);
+      g += rnd_btw(-5, 5);
+      b += rnd_btw(-5, 5);
       
       r = constrain(r, 0, 255);
       g = constrain(g, 0, 255);
@@ -539,7 +547,7 @@ function calculateKnitDeformation(x, y) {
   let offsetX = 0;
   let offsetY = 0;
   
-  let numFolds = int(random(1, 2));
+  let numFolds = int(rnd_btw(1, 2));
   
   let perpAngle = mainFoldAngle + PI/2;
   let projectedDist = x * cos(perpAngle) + y * sin(perpAngle);
@@ -642,16 +650,13 @@ function renderKnitPattern() {
 }
 
 function draw() {
-  clear();
+  //clear();
+  background(25);
   const scale = 1.1;
   const offset = (width * scale - width) / -2;
   image(buffer, offset, offset, width * scale, height * scale);
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  buffer = createGraphics(width, height);
-  buffer.pixelDensity(1);
+  hl.token.capturePreview()
+  console.log("Capture done")
 }
 
 function keyPressed() {
